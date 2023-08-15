@@ -39,11 +39,160 @@ The project aims to establish an automated unit testing framework for Amazon Red
    - Define test scenarios that establish connections to the Dockerized Redshift database and execute SQL queries.
    - Generate detailed test reports and output using `pytest` capabilities.
 
-## Folder Structure
+#### Example Test Scenarios and Coverage
+
+Our comprehensive test scenarios cover key aspects of our Employee Department database, including:
+
+1.  Employee and Department Details Query
+
+    -   Test Case 1: Verify the accuracy of retrieving employee and department details.
+    -   Test Case 2: Validate the presence of specific employees in particular departments.
+2.  Employee Count by Department Query
+
+    -   Test Case 3: Confirm the accuracy of employee counts in each department.
+
+#### Test Environment Setup
+
+We will establish a dedicated Dockerized Redshift simulation environment that closely mimics our production setup. The following components are integral to the setup:
+
+##### Folder Structure:
+
+Copy code
+
+![image](https://github.com/curious-shobhit/unit_test/assets/57742116/0ea0ab43-83d0-4f81-8a74-54506d228b47)
 
 
+1.  Dockerfile (`docker/Dockerfile`): A Dockerfile to configure the Redshift simulation environment:
 
-Execution Steps
-Draft test cases within the tests/test_employee_department_queries.py file.
-Invoke the test execution using pytest along with the command pytest --docker-compose=docker-compose.yml.
+    DockerfileCopy code
 
+    `FROM awslabs/amazon-redshift-utils
+
+    # Copy test data and SQL scripts to the container
+    COPY test_data /test_data
+    COPY sql_scripts /sql_scripts
+
+    # Set environment variables
+    ENV DB employeedb
+    ENV HOST localhost
+    ENV PORT 5439
+    ENV USER testuser
+    ENV PASSWORD testpassword
+
+    # Run Redshift simulation
+    CMD ["python3", "redshift_simulator.py"]`
+
+2.  SQL Scripts (`sql_scripts/`): Directory containing SQL script files (`script1.sql`, `script2.sql`, etc.) with your Redshift queries.
+
+3.  Test Scripts (`tests/`):
+
+    -   `conftest.py`: Configuration file for `pytest`, defining fixtures and shared resources.
+
+    pythonCopy code
+
+    `# conftest.py
+    import pytest
+    import psycopg2
+    import os
+
+    @pytest.fixture(scope="module")
+    def redshift_connection():
+        conn = psycopg2.connect(
+            dbname=os.environ["DB"],
+            user=os.environ["USER"],
+            password=os.environ["PASSWORD"],
+            host=os.environ["HOST"],
+            port=os.environ["PORT"]
+        )
+        yield conn
+        conn.close()`
+
+    -   `test_employee_department_queries.py`: Test script containing unit test cases.
+
+    pythonCopy code
+
+    `# test_employee_department_queries.py
+    import pytest
+
+    def test_employee_details_query(redshift_connection):
+        # ... (test case implementation)
+
+    def test_employee_count_by_department(redshift_connection):
+        # ... (test case implementation)`
+
+4.  `pytest.ini`: Configuration file for `pytest` specifying command-line options and test discovery settings.
+
+    cssCopy code
+
+    `[pytest]
+    addopts = --docker-compose=docker-compose.yml`
+
+5.  `redshift_simulator.py`: Python script to load data from CSV files and execute SQL scripts against the Redshift simulation.
+
+    pythonCopy code
+
+    `# redshift_simulator.py
+    import psycopg2
+    from psycopg2 import sql
+    import os
+
+    def main():
+        conn = psycopg2.connect(
+            dbname=os.environ["DB"],
+            user=os.environ["USER"],
+            password=os.environ["PASSWORD"],
+            host=os.environ["HOST"],
+            port=os.environ["PORT"]
+        )
+
+        data_dirs = [
+            os.path.join(os.path.dirname(__file__), "test_data"),
+            os.path.join(os.path.dirname(__file__), "sql_scripts")
+        ]
+
+        try:
+            with conn.cursor() as cursor:
+                for data_dir in data_dirs:
+                    for root, dirs, files in os.walk(data_dir):
+                        for file in files:
+                            if file.endswith(".csv"):
+                                table_name = os.path.splitext(file)[0]
+                                csv_file = os.path.join(root, file)
+                                with open(csv_file, "r") as file:
+                                    cursor.copy_expert(f"COPY {table_name} FROM stdin CSV HEADER", file)
+                            elif file.endswith(".sql"):
+                                sql_file = os.path.join(root, file)
+                                with open(sql_file, "r") as file:
+                                    sql_statements = file.read()
+                                    cursor.execute(sql.SQL(sql_statements))
+            conn.commit()
+        except Exception as e:
+            print("Error:", e)
+        finally:
+            conn.close()
+
+    if __name__ == "__main__":
+        main()`
+
+### Test Execution Steps
+
+#### Test Employee Department Queries (`test_employee_department_queries.py`):
+
+pythonCopy code
+
+`# test_employee_department_queries.py
+import pytest
+
+def test_employee_details_query(redshift_connection):
+    # ... (test case implementation)
+
+def test_employee_count_by_department(redshift_connection):
+    # ... (test case implementation)`
+
+### Continuous Integration and Continuous Deployment (CI/CD) Integration
+
+Our CI/CD pipeline will automatically trigger unit tests upon each code commit, ensuring thorough validation before integration.
+
+### Reporting and Documentation
+
+Detailed test reports will provide
