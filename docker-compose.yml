@@ -1,0 +1,14 @@
+version: '3'
+services:
+  redshift:
+    image: awslabs/amazon-redshift-utils
+    environment:
+      DB: employeedb
+      HOST: localhost
+      PORT: 5439
+      USER: testuser
+      PASSWORD: testpassword
+    volumes:
+      - ./sql_scripts:/sql_scripts
+      - ./test_data:/test_data
+    command: python3 redshift_simulator.py
